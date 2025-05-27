@@ -1,0 +1,35 @@
+# Use a specific version of Ubuntu LTS as base
+FROM ubuntu:22.04
+
+# Set non-interactive frontend for apt-get and SSH
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    ca-certificates \
+    curl \
+    git \
+    make \
+    openssh-client \
+    python3 \
+    python3-pip \
+    python3-venv \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /app
+
+# Copy test files
+COPY . .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -e .[test]
+
+# Set the entrypoint
+ENTRYPOINT ["/app/tests/run_tests.sh"]
+
+# Default command (can be overridden)
+CMD ["-t", "all"]
