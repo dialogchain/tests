@@ -17,7 +17,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     python3-pip \
     python3-venv \
-    && rm -rf /var/lib/apt/lists/*
+    python-is-python3 \
+    && rm -rf /var/lib/apt/lists/* \
+    && ln -s /usr/bin/python3 /usr/bin/python
 
 # Create non-root user and set up directories
 RUN useradd -m appuser && \
@@ -30,20 +32,24 @@ USER appuser
 # Set working directory
 WORKDIR /app
 
-# Copy the Python project files
-COPY --chown=appuser:appuser . /app/
+# Copy only the necessary files for dependency installation
+COPY --chown=appuser:appuser python/pyproject.toml python/poetry.lock* /app/python/
 
 # Install the package in development mode with test dependencies
 WORKDIR /app/python
 
-# First install the package in development mode
+# Install the package in development mode
 RUN pip install --no-cache-dir -e .
 
-# Then install test dependencies
+# Install test dependencies
 RUN pip install --no-cache-dir pytest pytest-cov pytest-mqtt pytest-httpbin
 
-# Set the working directory back to /app
+# Copy the rest of the application
 WORKDIR /app
+COPY --chown=appuser:appuser . /app/
+
+# Set the working directory to the python directory where the package is located
+WORKDIR /app/python
 
 # Set the entrypoint to run tests
 ENTRYPOINT ["/app/tests/run_tests.sh"]
