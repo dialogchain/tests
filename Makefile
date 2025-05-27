@@ -42,28 +42,40 @@ lint:
 	mypy .
 
 # Test commands
-.PHONY: test test-unit test-integration test-mqtt test-http test-coverage test-docker
+.PHONY: test test-unit test-integration test-mqtt test-http test-coverage test-docker test-docker-interactive
+
+# Run all tests
 test:
-	$(PYTHON) -m pytest -v tests/unit/ tests/integration/
+	./run_tests.sh
 
+# Run unit tests
 test-unit:
-	$(PYTHON) -m pytest -v tests/unit/
+	./run_tests.sh -t unit
 
+# Run integration tests
 test-integration:
-	$(PYTHON) -m pytest -v tests/integration/
+	./run_tests.sh -t integration
 
+# Run MQTT tests
 test-mqtt:
-	$(PYTHON) -m pytest -v tests/integration/mqtt/ --log-cli-level=INFO
+	./run_tests.sh -t mqtt
 
+# Run HTTP tests
 test-http:
-	$(PYTHON) -m pytest -v tests/integration/http/ --log-cli-level=INFO
+	./run_tests.sh -t http
 
+# Run tests with coverage
 test-coverage:
 	$(PYTHON) -m pytest --cov=../dialogchain --cov-report=term-missing -v tests/
 
+# Run tests in Docker (non-interactive)
 test-docker:
+	./run_tests.sh -d
+
+# Run tests in Docker with interactive shell
+test-docker-interactive:
 	docker build -t dialogchain-tests -f Dockerfile.test .
-	docker run --rm dialogchain-tests
+	docker run -it --rm --entrypoint /bin/bash dialogchain-tests
 
 # Cleanup
 .PHONY: clean clean-all docker-clean docker-clean-all

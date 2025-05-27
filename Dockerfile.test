@@ -19,14 +19,27 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-venv \
     && rm -rf /var/lib/apt/lists/*
 
-# Set working directory
+# Set working directory to the project root
 WORKDIR /app
 
-# Copy test files
+# Copy the entire project
 COPY . .
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -e .[test]
+# Copy requirements files if they exist
+COPY requirements*.txt ./
+
+# Install the package in development mode with test dependencies
+RUN if [ -f "setup.py" ]; then \
+        pip install --no-cache-dir -e .[test]; \
+    elif [ -f "pyproject.toml" ]; then \
+        pip install --no-cache-dir -e ".[test]"; \
+    else \
+        echo "No setup.py or pyproject.toml found. Installing test requirements directly."; \
+        pip install --no-cache-dir pytest pytest-cov pytest-mqtt pytest-httpbin; \
+    fi
+
+# Set the working directory to tests for running the tests
+WORKDIR /app/tests
 
 # Set the entrypoint
 ENTRYPOINT ["/app/tests/run_tests.sh"]

@@ -114,18 +114,19 @@ run_local_tests() {
 # Function to run tests in Docker
 run_docker_tests() {
     local docker_args=("--rm")
-    local test_cmd="make test-$TEST_TYPE"
+    local test_cmd="-t $TEST_TYPE"
     
     if [ "$VERBOSE" = true ]; then
-        docker_args+=("-e" "VERBOSE=1")
+        test_cmd="$test_cmd -v"
     fi
     
     if [ "$KEEP_CONTAINERS" = true ]; then
         docker_args=("--name" "dialogchain-tests")
     fi
     
+    # Build the Docker image from the project root
     log "Building test Docker image..."
-    docker build -t dialogchain-tests -f Dockerfile.test .
+    cd .. && docker build -t dialogchain-tests -f tests/Dockerfile.test .
     
     log "Running tests in Docker container..."
     docker run "${docker_args[@]}" dialogchain-tests $test_cmd
@@ -133,6 +134,7 @@ run_docker_tests() {
     if [ "$KEEP_CONTAINERS" = true ]; then
         info "Test container kept running with name: dialogchain-tests"
         info "To stop and remove: docker rm -f dialogchain-tests"
+        info "To attach: docker exec -it dialogchain-tests /bin/bash"
     fi
 }
 
