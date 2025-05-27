@@ -17,11 +17,11 @@ TEST_TOPIC_PUBLISH = "test/publish"
 TEST_TOPIC_SUBSCRIBE = "test/subscribe"
 
 
-def test_mqtt_connection(mqtt_server):
+def test_mqtt_connection(mosquitto):
     """Test that we can connect to the MQTT broker."""
     client = mqtt.Client()
-    client.connect(mqtt_server.host, mqtt_server.port)
-    assert client.is_connected() is False
+    client.connect(mosquitto.host, mosquitto.port)
+    assert client.is_connected() is False  # Not connected yet
     client.loop_start()
     time.sleep(0.1)  # Give it a moment to connect
     assert client.is_connected() is True
@@ -29,7 +29,7 @@ def test_mqtt_connection(mqtt_server):
     client.loop_stop()
 
 
-def test_mqtt_publish_subscribe(mqtt_server):
+def test_mqtt_publish_subscribe(mosquitto):
     """Test publishing and subscribing to MQTT topics."""
     received_messages = []
     
@@ -54,7 +54,7 @@ def test_mqtt_publish_subscribe(mqtt_server):
     client.on_message = on_message
     
     # Connect and start the loop
-    client.connect(mqtt_server.host, mqtt_server.port)
+    client.connect(mosquitto.host, mosquitto.port)
     client.loop_start()
     
     # Wait for connection and subscription
@@ -81,7 +81,7 @@ def test_mqtt_publish_subscribe(mqtt_server):
 
 
 @pytest.mark.parametrize("qos", [0, 1, 2])
-def test_mqtt_qos_levels(mqtt_server, qos):
+def test_mqtt_qos_levels(mosquitto, qos):
     """Test different QoS levels for MQTT messages."""
     received_messages = []
     topic = f"{TEST_TOPIC_SUBSCRIBE}/qos{qos}"
@@ -107,7 +107,7 @@ def test_mqtt_qos_levels(mqtt_server, qos):
     client.on_message = on_message
     
     # Connect and start the loop
-    client.connect(mqtt_server.host, mqtt_server.port)
+    client.connect(mosquitto.host, mosquitto.port)
     client.loop_start()
     
     # Wait for connection and subscription
@@ -134,7 +134,7 @@ def test_mqtt_qos_levels(mqtt_server, qos):
     client.disconnect()
 
 
-def test_mqtt_retained_messages(mqtt_server):
+def test_mqtt_retained_messages(mosquitto):
     """Test MQTT retained messages."""
     topic = f"{TEST_TOPIC_SUBSCRIBE}/retained"
     received_messages = []
@@ -156,7 +156,7 @@ def test_mqtt_retained_messages(mqtt_server):
     
     # First client to publish a retained message
     pub_client = mqtt.Client()
-    pub_client.connect(mqtt_server.host, mqtt_server.port)
+    pub_client.connect(mosquitto.host, mosquitto.port)
     pub_client.loop_start()
     
     # Publish a retained message
@@ -168,7 +168,7 @@ def test_mqtt_retained_messages(mqtt_server):
     sub_client = mqtt.Client()
     sub_client.on_connect = on_connect
     sub_client.on_message = on_message
-    sub_client.connect(mqtt_server.host, mqtt_server.port)
+    sub_client.connect(mosquitto.host, mosquitto.port)
     sub_client.loop_start()
     
     # Wait for the retained message
@@ -190,7 +190,7 @@ def test_mqtt_retained_messages(mqtt_server):
     
     # Clear the retained message
     clear_client = mqtt.Client()
-    clear_client.connect(mqtt_server.host, mqtt_server.port)
+    clear_client.connect(mosquitto.host, mosquitto.port)
     clear_client.loop_start()
     clear_client.publish(topic, retain=True)  # Empty retained message
     time.sleep(0.2)
