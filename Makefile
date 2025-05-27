@@ -41,41 +41,42 @@ lint:
 	flake8 .
 	mypy .
 
-# Test commands delegate to tests/Makefile
+# Test commands
 .PHONY: test test-unit test-integration test-coverage test-docker
 test:
-	$(MAKE) -C tests test
+	cd .. && $(PYTHON) -m pytest -v tests/unit/ tests/integration/
 
 test-unit:
-	$(MAKE) -C tests test-unit
+	cd .. && $(PYTHON) -m pytest -v tests/unit/
 
 test-integration:
-	$(MAKE) -C tests test-integration
+	cd .. && $(PYTHON) -m pytest -v tests/integration/
 
 test-coverage:
-	$(MAKE) -C tests test-coverage
+	cd .. && $(COVERAGE) run -m pytest tests/
+	$(COVERAGE) report -m
 
 test-docker:
-	$(MAKE) -C tests test-docker
+	./run_tests_locally.sh
 
 # Cleanup
-.PHONY: clean clean-all
+.PHONY: clean clean-all docker-clean docker-clean-all
 clean:
-	find . -type d -name "__pycache__" -exec rm -r {} +
-	find . -type d -name ".pytest_cache" -exec rm -r {} +
-	find . -type d -name ".mypy_cache" -exec rm -r {} +
-	rm -f .coverage
+	find .. -type d -name "__pycache__" -exec rm -r {} +
+	find .. -type d -name ".pytest_cache" -exec rm -r {} +
+	find .. -type d -name ".mypy_cache" -exec rm -r {} +
+	rm -f ../.coverage
 
 clean-all: clean
-	$(MAKE) -C tests clean
 
+# Docker cleanup
 docker-clean:
-	$(MAKE) -C tests docker-clean
+	docker rmi make-test-env || true
 
-docker-clean-all:
-	$(MAKE) -C tests docker-clean-all
+docker-clean-all: docker-clean
+	docker system prune -f
 
 # Install test dependencies
 .PHONY: deps
 deps:
-	$(MAKE) -C tests deps
+	cd .. && $(PIP) install -e .[test]
