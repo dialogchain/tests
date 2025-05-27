@@ -65,16 +65,6 @@ test-docker:
 	docker build -t dialogchain-tests -f Dockerfile.test .
 	docker run --rm dialogchain-tests
 
-test-integration:
-	cd .. && $(PYTHON) -m pytest -v tests/integration/
-
-test-coverage:
-	cd .. && $(COVERAGE) run -m pytest tests/
-	$(COVERAGE) report -m
-
-test-docker:
-	./run_tests_locally.sh
-
 # Cleanup
 .PHONY: clean clean-all docker-clean docker-clean-all
 clean:
