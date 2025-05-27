@@ -68,15 +68,17 @@ test-http:
 test-coverage:
 	$(PYTHON) -m pytest --cov=../dialogchain --cov-report=term-missing -v tests/
 
-# Run tests in Docker (non-interactive)
+# Run tests in Docker using Docker Compose
 test-docker:
-	docker build -t dialogchain-tests -f Dockerfile.test ..
-	docker run --rm -v "$(shell pwd)/..:/app" -w /app dialogchain-tests
+	docker-compose -f ../docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from tests
 
 # Run tests in Docker with interactive shell
 test-docker-interactive:
-	docker build -t dialogchain-tests -f Dockerfile.test .
-	docker run -it --rm --entrypoint /bin/bash dialogchain-tests
+	docker-compose -f ../docker-compose.test.yml run --rm --entrypoint /bin/bash tests
+
+# Run a specific test in Docker
+test-docker-%:
+	docker-compose -f ../docker-compose.test.yml run --rm tests -t $*
 
 # Cleanup
 .PHONY: clean clean-all docker-clean docker-clean-all

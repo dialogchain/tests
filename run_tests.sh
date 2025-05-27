@@ -76,18 +76,21 @@ info() {
 
 # Function to run tests locally
 run_local_tests() {
-    local test_cmd="PYTHONPATH=$PYTHONPATH:. pytest -v"
-    
-    if [ "$VERBOSE" = true ]; then
-        test_cmd="$test_cmd -s"
-    fi
-    
     # Get the absolute path to the tests directory
     local test_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     local project_root="$(dirname "$test_dir")"
     
+    # Set PYTHONPATH to include the project root
+    export PYTHONPATH="${PYTHONPATH:+$PYTHONPATH:}$project_root"
+    
     # Change to project root directory
     cd "$project_root" || { echo "Failed to change to project root directory"; exit 1; }
+    
+    local test_cmd="pytest -v"
+    
+    if [ "$VERBOSE" = true ]; then
+        test_cmd="$test_cmd -s"
+    fi
     
     case $TEST_TYPE in
         unit)
