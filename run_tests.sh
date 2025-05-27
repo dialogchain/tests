@@ -74,19 +74,30 @@ info() {
     echo -e "${BLUE}[INFO]${NC} $(date '+%Y-%m-%d %H:%M:%S') - $1"
 }
 
+# Function to install test dependencies
+install_test_deps() {
+    echo "Installing test dependencies..."
+    pip install --no-cache-dir pytest pytest-cov pytest-mqtt pytest-httpbin
+}
+
 # Function to run tests locally
 run_local_tests() {
     # Get the absolute path to the tests directory
     local test_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     local project_root="$(dirname "$test_dir")"
     
-    # Set PYTHONPATH to include the project root
-    export PYTHONPATH="${PYTHONPATH:+$PYTHONPATH:}$project_root"
+    # Set PYTHONPATH to include the project root and python directory
+    export PYTHONPATH="${PYTHONPATH:+$PYTHONPATH:}$project_root:$project_root/python"
     
-    # Change to project root directory
-    cd "$project_root" || { echo "Failed to change to project root directory"; exit 1; }
+    # Install test dependencies if not already installed
+    if ! command -v pytest &> /dev/null; then
+        install_test_deps
+    fi
     
-    local test_cmd="pytest -v"
+    # Change to python directory where the package is located
+    cd "$project_root/python" || { echo "Failed to change to python directory"; exit 1; }
+    
+    local test_cmd="python -m pytest -v"
     
     if [ "$VERBOSE" = true ]; then
         test_cmd="$test_cmd -s"
