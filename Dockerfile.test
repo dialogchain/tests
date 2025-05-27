@@ -38,10 +38,17 @@ RUN if [ -f "setup.py" ]; then \
         pip install --no-cache-dir pytest pytest-cov pytest-mqtt pytest-httpbin; \
     fi
 
-# Set the working directory to tests for running the tests
-WORKDIR /app/tests
+# Create a non-root user to run the application
+RUN useradd -m appuser && \
+    chown -R appuser:appuser /app
 
-# Set the entrypoint
+# Switch to non-root user
+USER appuser
+
+# Set the working directory to the project root
+WORKDIR /app
+
+# Set the entrypoint to run tests
 ENTRYPOINT ["/app/tests/run_tests.sh"]
 
 # Default command (can be overridden)

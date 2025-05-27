@@ -76,11 +76,18 @@ info() {
 
 # Function to run tests locally
 run_local_tests() {
-    local test_cmd="pytest -v"
+    local test_cmd="PYTHONPATH=$PYTHONPATH:. pytest -v"
     
     if [ "$VERBOSE" = true ]; then
         test_cmd="$test_cmd -s"
     fi
+    
+    # Get the absolute path to the tests directory
+    local test_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    local project_root="$(dirname "$test_dir")"
+    
+    # Change to project root directory
+    cd "$project_root" || { echo "Failed to change to project root directory"; exit 1; }
     
     case $TEST_TYPE in
         unit)
@@ -97,11 +104,11 @@ run_local_tests() {
             ;;
         http)
             log "Running HTTP tests..."
-            $test_cmd tests/integration/http/ --log-cli-level=INFO
+            $test_cmd tests/integration/test_http_connector.py -v
             ;;
         all)
             log "Running all tests..."
-            $test_cmd tests/unit/ tests/integration/
+            $test_cmd
             ;;
         *)
             echo "Unknown test type: $TEST_TYPE"

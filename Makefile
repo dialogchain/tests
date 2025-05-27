@@ -70,7 +70,8 @@ test-coverage:
 
 # Run tests in Docker (non-interactive)
 test-docker:
-	./run_tests.sh -d
+	docker build -t dialogchain-tests -f Dockerfile.test ..
+	docker run --rm -v "$(shell pwd)/..:/app" -w /app dialogchain-tests
 
 # Run tests in Docker with interactive shell
 test-docker-interactive:
