@@ -4,7 +4,8 @@ FROM ubuntu:22.04
 # Set non-interactive frontend for apt-get and SSH
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONPATH=/app
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -19,31 +20,27 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-venv \
     && rm -rf /var/lib/apt/lists/*
 
-# Set working directory to the project root
-WORKDIR /app
-
-# Copy the entire project
-COPY . .
-
-# Copy requirements files if they exist
-COPY requirements*.txt ./
-
-# Install the package in development mode with test dependencies
-RUN if [ -f "setup.py" ]; then \
-        pip install --no-cache-dir -e .[test]; \
-    elif [ -f "pyproject.toml" ]; then \
-        pip install --no-cache-dir -e ".[test]"; \
-    else \
-        echo "No setup.py or pyproject.toml found. Installing test requirements directly."; \
-        pip install --no-cache-dir pytest pytest-cov pytest-mqtt pytest-httpbin; \
-    fi
-
-# Create a non-root user to run the application
+# Create non-root user and set up directories
 RUN useradd -m appuser && \
+    mkdir -p /app && \
     chown -R appuser:appuser /app
 
 # Switch to non-root user
 USER appuser
+
+# Set working directory
+WORKDIR /app
+
+# Copy only the necessary files for dependency installation
+COPY --chown=appuser:appuser pyproject.toml poetry.lock* /app/
+
+# Install Poetry and project dependencies
+RUN pip install --no-cache-dir poetry && \
+    poetry config virtualenvs.create false && \
+    poetry install --no-interaction --no-ansi --with test
+
+# Copy the rest of the application
+COPY --chown=appuser:appuser . /app/
 
 # Set the working directory to the project root
 WORKDIR /app
