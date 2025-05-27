@@ -42,12 +42,28 @@ lint:
 	mypy .
 
 # Test commands
-.PHONY: test test-unit test-integration test-coverage test-docker
+.PHONY: test test-unit test-integration test-mqtt test-http test-coverage test-docker
 test:
-	cd .. && $(PYTHON) -m pytest -v tests/unit/ tests/integration/
+	$(PYTHON) -m pytest -v tests/unit/ tests/integration/
 
 test-unit:
-	cd .. && $(PYTHON) -m pytest -v tests/unit/
+	$(PYTHON) -m pytest -v tests/unit/
+
+test-integration:
+	$(PYTHON) -m pytest -v tests/integration/
+
+test-mqtt:
+	$(PYTHON) -m pytest -v tests/integration/mqtt/ --log-cli-level=INFO
+
+test-http:
+	$(PYTHON) -m pytest -v tests/integration/http/ --log-cli-level=INFO
+
+test-coverage:
+	$(PYTHON) -m pytest --cov=../dialogchain --cov-report=term-missing -v tests/
+
+test-docker:
+	docker build -t dialogchain-tests -f Dockerfile.test .
+	docker run --rm dialogchain-tests
 
 test-integration:
 	cd .. && $(PYTHON) -m pytest -v tests/integration/

@@ -5,18 +5,42 @@ set -euo pipefail
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration
 REPO_URL="${REPO_URL:-https://github.com/dialogchain/python.git}"
 BRANCH="${BRANCH:-main}"
-MAKE_TARGETS=("${MAKE_TARGETS:-help deps test}")
-PYTHON_DEPS=("${PYTHON_DEPS:-}")
-SYSTEM_DEPS=("${SYSTEM_DEPS:-}")
+MAKE_TARGETS=(${MAKE_TARGETS:-help deps test})
+PYTHON_DEPS=(${PYTHON_DEPS:-})
+SYSTEM_DEPS=(${SYSTEM_DEPS:-})
+TEST_TIMEOUT=${TEST_TIMEOUT:-300}
+
+# Set up SSH configuration to avoid host key verification
+setup_ssh() {
+    local ssh_dir="${HOME}/.ssh"
+    mkdir -p "${ssh_dir}"
+    chmod 700 "${ssh_dir}"
+    
+    # Configure SSH to automatically accept host keys
+    cat > "${ssh_dir}/config" <<- 'EOF'
+Host *
+    StrictHostKeyChecking no
+    UserKnownHostsFile=/dev/null
+    LogLevel ERROR
+EOF
+    
+    chmod 600 "${ssh_dir}/config"
+}
 
 # Function to log messages
 log() {
     echo -e "${GREEN}[TEST]${NC} $(date '+%Y-%m-%d %H:%M:%S') - $1"
+}
+
+# Function to log info messages
+info() {
+    echo -e "${BLUE}[INFO]${NC} $(date '+%Y-%m-%d %H:%M:%S') - $1"
 }
 
 # Function to log warnings
@@ -43,13 +67,13 @@ install_system_deps() {
         # Check if we're root or can use sudo
         if [ "$(id -u)" -eq 0 ]; then
             apt-get update
-            if ! apt-get install -y "${SYSTEM_DEPS[@]}"; then
+            if ! DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends "${SYSTEM_DEPS[@]}"; then
                 warn "Failed to install system dependencies as root"
                 return 1
             fi
         elif command -v sudo >/dev/null 2>&1; then
-            sudo apt-get update
-            if ! sudo apt-get install -y "${SYSTEM_DEPS[@]}"; then
+            if ! sudo DEBIAN_FRONTEND=noninteractive apt-get update || \
+               ! sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends "${SYSTEM_DEPS[@]}"; then
                 warn "Failed to install system dependencies with sudo"
                 return 1
             fi
@@ -175,16 +199,20 @@ main() {
     
     # Install project in development mode if setup.py exists
     if [ -f "setup.py" ]; then
-        log "Installing project in development mode"
+        log "Installing project in development mode..."
         if ! pip install -e .; then
-            error "Failed to install project in development mode"
+            warn "Failed to install project in development mode"
+            return 1
         fi
+    else
+        warn "No setup.py found, skipping project installation"
     fi
     
     # Run make targets
     run_make_targets
     
-    log "All tests completed successfully!"
+    log "All tests completed successfully"
+    exit 0
 }
 
 # Run the main function
