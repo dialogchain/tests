@@ -45,61 +45,102 @@ install_system_deps() {
             apt-get update
             if ! apt-get install -y "${SYSTEM_DEPS[@]}"; then
                 warn "Failed to install system dependencies as root"
+                return 1
             fi
         elif command -v sudo >/dev/null 2>&1; then
             sudo apt-get update
             if ! sudo apt-get install -y "${SYSTEM_DEPS[@]}"; then
                 warn "Failed to install system dependencies with sudo"
+                return 1
             fi
         else
-            warn "Cannot install system dependencies - need root or sudo"
-            warn "Missing packages: ${SYSTEM_DEPS[*]}"
+            warn "Cannot install system dependencies - need root access or sudo"
+            return 1
         fi
     fi
+    return 0
 }
 
-# Install Python dependencies
+# Install Python dependencies in a virtual environment
 install_python_deps() {
-    if [ -n "${PYTHON_DEPS}" ]; then
-        log "Installing Python dependencies: ${PYTHON_DEPS}"
-        # Convert space-separated string to array
-        IFS=' ' read -r -a deps_array <<< "$PYTHON_DEPS"
-        if ! pip install --no-cache-dir "${deps_array[@]}"; then
-            error "Failed to install Python dependencies"
+    if [ ${#PYTHON_DEPS[@]} -gt 0 ]; then
+        log "Installing Python dependencies: ${PYTHON_DEPS[*]}"
+        
+        # Create and activate virtual environment
+        python3 -m venv /app/venv
+        # shellcheck source=/dev/null
+        . /app/venv/bin/activate
+        
+        # Upgrade pip and setuptools
+        pip install --no-cache-dir --upgrade pip setuptools wheel
+        
+        # Install dependencies
+        if ! pip install --no-cache-dir "${PYTHON_DEPS[@]}"; then
+            warn "Failed to install some Python dependencies"
+            return 1
         fi
     fi
+    return 0
 }
 
-# Clone the repository
+# Clone the repository with retry logic
 clone_repo() {
     local repo_dir="/tmp/repo"
+    local max_retries=3
+    local retry_delay=5
     
-    log "Cloning repository: $REPO_URL (branch: $BRANCH)"
     if [ -d "$repo_dir" ]; then
-        warn "Repository directory already exists, removing it"
+        log "Repository directory already exists, removing it..."
         rm -rf "$repo_dir"
     fi
     
-    if ! git clone --depth 1 --branch "$BRANCH" "$REPO_URL" "$repo_dir"; then
-        error "Failed to clone repository"
-    fi
+    log "Cloning repository: $REPO_URL (branch: $BRANCH)"
     
-    cd "$repo_dir" || error "Failed to enter repository directory"
-    log "Repository cloned to $repo_dir"
+    # Try cloning with retries
+    local attempt=1
+    while [ $attempt -le $max_retries ]; do
+        info "Attempt $attempt of $max_retries: Cloning repository..."
+        
+        if git clone --depth 1 --branch "$BRANCH" "$REPO_URL" "$repo_dir" 2>/dev/null; then
+            cd "$repo_dir" || error "Failed to change to repository directory"
+            log "Successfully cloned repository to $repo_dir"
+            return 0
+        fi
+        
+        warn "Clone attempt $attempt failed"
+        
+        if [ $attempt -lt $max_retries ]; then
+            info "Retrying in $retry_delay seconds..."
+            sleep $retry_delay
+        fi
+        
+        attempt=$((attempt + 1))
+    done
+    
+    error "Failed to clone repository after $max_retries attempts"
 }
 
-# Run make targets
+# Run make targets with timeout
 run_make_targets() {
-    if [ ! -f "Makefile" ]; then
-        error "No Makefile found in the repository"
-    fi
+    local start_time
+    local elapsed
     
-    log "Available make targets:"
-    make -qp | awk -F':' '/^[a-zA-Z0-9][^$#\/\t=]*:([^=]|$)/ {split($1,A,/ /);for(i in A)print A[i]}' | sort -u || true
+    start_time=$(date +%s)
     
-    for target in $MAKE_TARGETS; do
+    for target in "${MAKE_TARGETS[@]}"; do
         log "Running make target: $target"
-        if ! make "$target"; then
+        
+        # Check if we've exceeded the timeout
+        elapsed=$(( $(date +%s) - start_time ))
+        if [ $elapsed -ge $TEST_TIMEOUT ]; then
+            error "Test timeout of ${TEST_TIMEOUT}s exceeded"
+        fi
+        
+        # Calculate remaining time
+        local remaining_time=$((TEST_TIMEOUT - elapsed))
+        
+        # Run the target with timeout
+        if ! timeout $remaining_time make "$target"; then
             error "Make target '$target' failed"
         fi
     done
@@ -107,13 +148,27 @@ run_make_targets() {
 
 # Main function
 main() {
-    log "Starting test environment"
+    # Set up SSH configuration
+    setup_ssh
     
-    # Install system dependencies if any
-    install_system_deps
+    log "Starting test environment setup"
+    info "Configuration:"
+    info "  REPO_URL: $REPO_URL"
+    info "  BRANCH: $BRANCH"
+    info "  MAKE_TARGETS: ${MAKE_TARGETS[*]}"
+    info "  PYTHON_DEPS: ${PYTHON_DEPS[*]}"
+    info "  SYSTEM_DEPS: ${SYSTEM_DEPS[*]}"
+    info "  TEST_TIMEOUT: ${TEST_TIMEOUT}s"
     
-    # Install Python dependencies if any
-    install_python_deps
+    # Install system dependencies
+    if ! install_system_deps; then
+        warn "Some system dependencies failed to install, but continuing..."
+    fi
+    
+    # Install Python dependencies
+    if ! install_python_deps; then
+        warn "Some Python dependencies failed to install, but continuing..."
+    fi
     
     # Clone the repository
     clone_repo
