@@ -8,7 +8,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONPATH=/app/python
 
 # Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     build-essential \
     ca-certificates \
     curl \
@@ -19,7 +19,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-venv \
     python-is-python3 \
     && rm -rf /var/lib/apt/lists/* \
-    && ln -s /usr/bin/python3 /usr/bin/python
+    && ln -sf /usr/bin/python3 /usr/bin/python \
+    && python --version \
+    && pip --version
 
 # Create non-root user and set up directories
 RUN useradd -m appuser && \
@@ -32,8 +34,11 @@ USER appuser
 # Set working directory
 WORKDIR /app
 
-# Copy only the necessary files for dependency installation
-COPY --chown=appuser:appuser python/pyproject.toml python/poetry.lock* /app/python/
+# Create necessary directories
+RUN mkdir -p /app/python
+
+# Copy the entire python directory first
+COPY --chown=appuser:appuser python/ /app/python/
 
 # Install the package in development mode with test dependencies
 WORKDIR /app/python
