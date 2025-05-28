@@ -42,14 +42,14 @@ WORKDIR /app
 # Create necessary directories
 RUN mkdir -p /app/python
 
-# Copy the entire python directory first
+# Copy the application code
 COPY --chown=appuser:appuser python/ /app/python/
 
-# Install the package in development mode with test dependencies
+# Set working directory
 WORKDIR /app/python
 
-# Install the package in development mode
-RUN pip install --no-cache-dir -e .
+# Install the package in development mode with test dependencies
+RUN pip install --no-cache-dir -e .[test]
 
 # Install test dependencies
 RUN pip install --no-cache-dir pytest pytest-cov pytest-mqtt pytest-httpbin pytest-asyncio
