@@ -1,0 +1,38 @@
+---
+- name: Verify
+  hosts: all
+  become: false
+  tasks:
+    - name: Check dialogchain is installed
+      command: which dialogchain
+      register: dialogchain_installed
+      changed_when: false
+      failed_when: false
+
+    - name: Verify dialogchain command
+      command: dialogchain --version
+      register: dialogchain_version
+      changed_when: false
+      failed_when: false
+
+    - name: Assert dialogchain is installed
+      assert:
+        that:
+          - dialogchain_installed.rc == 0
+          - dialogchain_version.rc == 0
+        fail_msg: "DialogChain is not properly installed"
+        success_msg: "DialogChain is properly installed ({{ dialogchain_version.stdout | default('unknown version') }})"
+
+    - name: Test basic dialogchain functionality
+      command: dialogchain --help
+      register: dialogchain_help
+      changed_when: false
+      failed_when: false
+
+    - name: Verify help output
+      assert:
+        that:
+          - dialogchain_help.rc == 0
+          - '"usage:"' in dialogchain_help.stdout
+        fail_msg: "DialogChain help command failed"
+        success_msg: "DialogChain help command works as expected"

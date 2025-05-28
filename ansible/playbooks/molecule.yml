@@ -1,0 +1,38 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: docker
+platforms:
+  - name: instance
+    image: ubuntu:22.04
+    pre_build_image: true
+    privileged: true
+    command: /sbin/init
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    tmpfs:
+      - /run
+      - /run/lock
+    capabilities:
+      - SYS_ADMIN
+
+provisioner:
+  name: ansible
+  config_options:
+    defaults:
+      callback_whitelist: profile_tasks
+      retry_files_enabled: false
+      host_key_checking: false
+  playbooks:
+    create: ../../molecule/create.yml
+    prepare: ../../molecule/prepare.yml
+    converge: ../../molecule/converge.yml
+    verify: ../../molecule/verify.yml
+    destroy: ../../molecule/destroy.yml
+
+verifier:
+  name: ansible
+  directory: ../../molecule/tests/
+  playbooks:
+    verify: verify.yml

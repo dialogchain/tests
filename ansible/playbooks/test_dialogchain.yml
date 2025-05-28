@@ -1,0 +1,51 @@
+---
+- name: Test DialogChain Installation
+  hosts: local
+  become: true
+  vars:
+    python_version: "3.11"
+    dialogchain_version: "0.1.11"
+
+  tasks:
+    - name: Install system dependencies
+      apt:
+        name:
+          - python{{ python_version }}
+          - python{{ python_version }}-venv
+          - python{{ python_version }}-dev
+          - build-essential
+          - libssl-dev
+          - libffi-dev
+        state: present
+        update_cache: yes
+
+    - name: Create virtual environment
+      community.general.pipx:
+        name: pip
+        state: present
+
+    - name: Install dialogchain
+      pipx:
+        name: dialogchain
+        version: "{{ dialogchain_version }}"
+        executable: "{{ ansible_user_dir }}/.local/bin/pipx"
+      register: dialogchain_install
+
+    - name: Verify dialogchain installation
+      command: dialogchain --version
+      register: dialogchain_version_cmd
+      changed_when: false
+
+    - name: Show dialogchain version
+      debug:
+        msg: "DialogChain version: {{ dialogchain_version_cmd.stdout }}"
+
+    - name: Run basic dialogchain command
+      command: dialogchain --help
+      register: dialogchain_help
+      changed_when: false
+
+    - name: Verify dialogchain help output
+      debug:
+        msg: "DialogChain help command executed successfully"
+      when: dialogchain_help.rc == 0

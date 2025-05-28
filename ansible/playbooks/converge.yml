@@ -1,0 +1,31 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  tasks:
+    - name: Install Python {{ python_version_number }}
+      ansible.builtin.include_role:
+        name: geerlingguy.python
+      vars:
+        python_version: "{{ python_version_number }}"
+        python_pip: true
+        python_pip_packages:
+          - pip
+          - setuptools
+          - wheel
+          - virtualenv
+
+    - name: Install dialogchain
+      pip:
+        name: dialogchain=={{ dialogchain_version }}
+        state: present
+
+    - name: Verify dialogchain installation
+      command: dialogchain --version
+      register: dialogchain_version_cmd
+      changed_when: false
+      failed_when: false
+
+    - name: Show dialogchain version
+      debug:
+        msg: "DialogChain version: {{ dialogchain_version_cmd.stdout | default('Not installed') }}"
