@@ -70,7 +70,7 @@ test-coverage:
 
 # Run tests in Docker using Docker Compose
 test-docker:
-	docker-compose -f ../docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from tests
+	docker-compose -f ../docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from tests --remove-orphans
 
 # Run tests in Docker with interactive shell
 test-docker-interactive:

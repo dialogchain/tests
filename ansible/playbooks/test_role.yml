@@ -1,0 +1,49 @@
+---
+- name: Test DialogChain Role
+  hosts: all
+  become: true
+  vars:
+    dialogchain_service_user: dialogchain
+    dialogchain_service_group: dialogchain
+    dialogchain_config_dir: /etc/dialogchain
+    dialogchain_config_file: "{{ dialogchain_config_dir }}/config.yaml"
+    dialogchain_log_dir: /var/log/dialogchain
+    dialogchain_data_dir: /var/lib/dialogchain
+    dialogchain_run_dir: /run/dialogchain
+
+  pre_tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+  roles:
+    - role: dialogchain
+
+  post_tasks:
+    - name: Verify dialogchain installation
+      command: dialogchain --version
+      register: dialogchain_version
+      changed_when: false
+      failed_when: false
+
+    - name: Show dialogchain version
+      debug:
+        msg: "DialogChain version: {{ dialogchain_version.stdout | default('Not installed') }}"
+
+    - name: Check if dialogchain service is running
+      systemd:
+        name: dialogchain
+        state: started
+        enabled: yes
+      register: service_status
+
+    - name: Verify service status
+      debug:
+        var: service_status
+
+    - name: Check if dialogchain is listening
+      wait_for:
+        port: 8000
+        timeout: 30
+      when: service_status is changed or service_status is success

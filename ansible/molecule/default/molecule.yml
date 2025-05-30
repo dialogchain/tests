@@ -1,0 +1,32 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: docker
+platforms:
+  - name: instance
+    image: ubuntu:22.04
+    pre_build_image: true
+    privileged: true
+    command: /sbin/init
+    tmpfs:
+      - /run
+      - /run/lock
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    groups:
+      - test_group
+provisioner:
+  name: ansible
+  config_options:
+    defaults:
+      callback_whitelist: profile_tasks
+  playbooks:
+    create: ../../playbooks/create.yml
+    destroy: ../../playbooks/destroy.yml
+    prepare: ../../playbooks/prepare.yml
+    verify: ../../playbooks/verify.yml
+verifier:
+  name: ansible
+  playbooks:
+    verify: ../../playbooks/verify.yml

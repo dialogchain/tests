@@ -1,6 +1,9 @@
 # Use a specific version of Ubuntu LTS as base
 FROM ubuntu:22.04
 
+# Set default Python version
+ARG PYTHON_VERSION=3.10
+
 # Set non-interactive frontend for apt-get
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
@@ -48,11 +51,19 @@ COPY --chown=appuser:appuser python/ /app/python/
 # Set working directory
 WORKDIR /app/python
 
-# Install the package in development mode with test dependencies
-RUN pip install --no-cache-dir -e .[test]
+# Install the package in development mode with test and dev dependencies
+RUN pip install --no-cache-dir -e ".[test,dev]"
 
-# Install test dependencies
-RUN pip install --no-cache-dir pytest pytest-cov pytest-mqtt pytest-httpbin pytest-asyncio
+# Install additional test dependencies not covered by extras
+RUN pip install --no-cache-dir \
+    pytest-cov \
+    pytest-mqtt \
+    pytest-httpbin \
+    pytest-asyncio \
+    pytest-mock \
+    testinfra \
+    molecule \
+    molecule-plugins[docker]
 
 # Copy the rest of the application
 WORKDIR /app

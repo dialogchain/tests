@@ -1,0 +1,164 @@
+---
+- name: Integration Test for DialogChain Role
+  hosts: all
+  become: true
+  vars:
+    python_version: "3.11"
+    dialogchain_version: "0.1.11"
+    dialogchain_service_user: dialogchain
+    dialogchain_service_group: dialogchain
+    dialogchain_config_dir: /etc/dialogchain
+    dialogchain_log_dir: /var/log/dialogchain
+    dialogchain_data_dir: /var/lib/dialogchain
+
+  pre_tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+  roles:
+    - role: dialogchain
+
+  tasks:
+    - name: Verify Python version
+      command: python3 --version
+      register: python_version_check
+      changed_when: false
+      failed_when: false
+
+    - name: Display Python version
+      debug:
+        msg: "Python version: {{ python_version_check.stderr | default(python_version_check.stdout) }}"
+
+    - name: Verify dialogchain installation
+      command: which dialogchain
+      register: dialogchain_installed
+      changed_when: false
+      failed_when: false
+
+    - name: Get dialogchain version
+      command: dialogchain --version
+      register: dialogchain_version_check
+      changed_when: false
+      failed_when: false
+
+    - name: Display dialogchain version
+      debug:
+        msg: "DialogChain version: {{ dialogchain_version_check.stdout | default('unknown') }}"
+
+    - name: Verify service user exists
+      user:
+        name: "{{ dialogchain_service_user }}"
+        state: present
+      register: user_check
+      changed_when: false
+      failed_when: false
+
+    - name: Verify service directories
+      stat:
+        path: "{{ item }}"
+      loop:
+        - "{{ dialogchain_config_dir }}"
+        - "{{ dialogchain_log_dir }}"
+        - "{{ dialogchain_data_dir }}"
+      register: dir_checks
+
+    - name: Verify directory permissions
+      assert:
+        that:
+          - item.stat.exists
+          - item.stat.isdir
+          - item.stat.mode | int == 0o755 or item.stat.mode | int == 0o775
+        fail_msg: "Directory {{ item.item }} has incorrect permissions or doesn't exist"
+      loop: "{{ dir_checks.results }}"
+
+    - name: Check for required config files
+      find:
+        paths: "{{ dialogchain_config_dir }}"
+        patterns:
+          - "*.yaml"
+          - "*.conf"
+      register: config_files
+
+    - name: Verify config files exist
+      assert:
+        that:
+          - config_files.matched > 0
+        fail_msg: "No configuration files found in {{ dialogchain_config_dir }}"
+
+    - name: Test dialogchain service
+      systemd:
+        name: dialogchain
+        state: restarted
+        enabled: yes
+      register: service_status
+
+    - name: Verify service is running
+      systemd:
+        name: dialogchain
+        state: started
+      register: service_running
+      changed_when: false
+
+    - name: Check service status
+      debug:
+        var: service_running
+
+    - name: Verify service is enabled
+      systemd:
+        name: dialogchain
+        enabled: yes
+      register: service_enabled
+      changed_when: false
+
+    - name: Check service enabled status
+      debug:
+        var: service_enabled
+
+    - name: Test basic dialogchain command
+      command: dialogchain --help
+      register: dialogchain_help
+      changed_when: false
+      failed_when: false
+
+    - name: Verify help output
+      assert:
+        that:
+          - dialogchain_help.rc == 0
+          - '"usage:"' in dialogchain_help.stdout
+        fail_msg: "DialogChain help command failed"
+        success_msg: "DialogChain help command works as expected"
+
+    - name: Check for listening ports
+      wait_for:
+        port: 8000
+        timeout: 30
+      register: port_check
+
+    - name: Verify port is listening
+      debug:
+        var: port_check
+
+  post_tasks:
+    - name: Gather system information
+      setup:
+        gather_subset: all
+      register: system_info
+
+    - name: Display system information
+      debug:
+        var: system_info.ansible_facts
+
+    - name: Save test results
+      copy:
+        content: |
+          Test Run Summary:
+          - Python Version: {{ python_version_check.stderr | default(python_version_check.stdout) }}
+          - DialogChain Version: {{ dialogchain_version_check.stdout | default('unknown') }}
+          - Service Status: {{ service_status.state | default('unknown') }}
+          - Service Running: {{ service_running.state | default('unknown') }}
+          - Service Enabled: {{ service_enabled.enabled | default('unknown') }}
+          - Port 8000 Listening: {{ port_check.elapsed | default('unknown') != 'unknown' | ternary('yes', 'no') }}
+        dest: /tmp/dialogchain_test_results.txt
+        mode: '0644'
