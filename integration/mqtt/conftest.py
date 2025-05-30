@@ -6,8 +6,8 @@ from paho.mqtt import client as mqtt
 @pytest.fixture(scope="module")
 def mosquitto():
     """Fixture that provides a connected MQTT client for testing."""
-    # Connect to the Mosquitto container
-    host = "mqtt"  # Using the service name as hostname within Docker network
+    # Connect to the Mosquitto container on host network
+    host = "host.docker.internal"  # Special DNS name for host from container
     port = 1883
     
     # Create a client for the fixture

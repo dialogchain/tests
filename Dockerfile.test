@@ -45,8 +45,12 @@ WORKDIR /app
 # Create necessary directories
 RUN mkdir -p /app/python
 
-# Copy the application code
+# Copy the application code and test requirements
 COPY --chown=appuser:appuser python/ /app/python/
+COPY --chown=appuser:appuser test-requirements.txt /app/
+
+# Install test requirements
+RUN pip install --no-cache-dir -r /app/test-requirements.txt
 
 # Set working directory
 WORKDIR /app/python
