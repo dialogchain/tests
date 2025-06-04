@@ -4,10 +4,10 @@ Tests for the main routing engine
 import pytest
 import asyncio
 from unittest.mock import Mock, patch
-from dialogchain.engine import CamelRouterEngine
+from dialogchain.engine import DialogChainEngine
 from dialogchain.exceptions import ConfigurationError, ValidationError
 
-class TestCamelRouterEngine:
+class TestDialogChainEngine:
     
     @pytest.fixture
     def sample_config(self):
@@ -28,24 +28,24 @@ class TestCamelRouterEngine:
         }
     
     def test_engine_initialization(self, sample_config):
-        engine = CamelRouterEngine(sample_config)
+        engine = DialogChainEngine(sample_config)
         assert engine.config == sample_config
         assert len(engine.routes) == 1
     
     def test_invalid_config_raises_error(self):
         invalid_config = {'invalid': 'config'}
         with pytest.raises(Exception):
-            engine = CamelRouterEngine(invalid_config)
+            engine = DialogChainEngine(invalid_config)
             errors = engine.validate_config()
             assert len(errors) > 0
     
     def test_route_validation(self, sample_config):
-        engine = CamelRouterEngine(sample_config)
+        engine = DialogChainEngine(sample_config)
         errors = engine.validate_config()
         assert len(errors) == 0
     
     def test_variable_resolution(self, sample_config):
-        engine = CamelRouterEngine(sample_config)
+        engine = DialogChainEngine(sample_config)
         
         with patch.dict('os.environ', {'TEST_VAR': 'test_value'}):
             result = engine.resolve_variables('{{TEST_VAR}}')
@@ -53,7 +53,7 @@ class TestCamelRouterEngine:
     
     @pytest.mark.asyncio
     async def test_single_route_execution(self, sample_config):
-        engine = CamelRouterEngine(sample_config)
+        engine = DialogChainEngine(sample_config)
         
         with patch.object(engine, 'run_route_config') as mock_run:
             mock_run.return_value = None
@@ -61,14 +61,14 @@ class TestCamelRouterEngine:
             mock_run.assert_called_once()
     
     def test_dry_run_execution(self, sample_config):
-        engine = CamelRouterEngine(sample_config, verbose=True)
+        engine = DialogChainEngine(sample_config, verbose=True)
         
         # Should not raise any exceptions
         engine.dry_run('test_route')
         engine.dry_run()  # All routes
     
     def test_source_creation(self, sample_config):
-        engine = CamelRouterEngine(sample_config)
+        engine = DialogChainEngine(sample_config)
         
         # Test timer source
         source = engine.create_source('timer://5s')
@@ -83,7 +83,7 @@ class TestCamelRouterEngine:
             engine.create_source('invalid://source')
     
     def test_processor_creation(self, sample_config):
-        engine = CamelRouterEngine(sample_config)
+        engine = DialogChainEngine(sample_config)
         
         # Test transform processor
         processor = engine.create_processor({
@@ -104,7 +104,7 @@ class TestCamelRouterEngine:
             engine.create_processor({'type': 'invalid'})
     
     def test_destination_creation(self, sample_config):
-        engine = CamelRouterEngine(sample_config)
+        engine = DialogChainEngine(sample_config)
         
         # Test log destination
         dest = engine.create_destination('log://test.log')
@@ -141,7 +141,7 @@ class TestAsyncRouteExecution:
         }
     
     async def test_async_route_execution(self, async_config):
-        engine = CamelRouterEngine(async_config)
+        engine = DialogChainEngine(async_config)
         
         # Mock the actual execution
         with patch.object(engine, 'execute_route') as mock_execute:
